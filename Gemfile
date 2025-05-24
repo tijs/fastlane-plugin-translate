@@ -1,5 +1,7 @@
 source('https://rubygems.org')
 
+ruby '>= 3.4'
+
 # Provides a consistent environment for Ruby projects by tracking and installing exact gem versions.
 gem 'bundler'
 # Automation tool for mobile developers.
