@@ -487,7 +487,6 @@ module Fastlane
         ['Your GitHub/Twitter Name']
       end
 
-      # rubocop:disable Naming/PredicateName
       def self.is_supported?(platform)
         platform == :ios
       end

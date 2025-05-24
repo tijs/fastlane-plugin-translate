@@ -21,7 +21,6 @@ module Fastlane
         UI.verbose("💾 Saved progress: #{translated_strings.size} new translations")
       end
 
-      # rubocop:disable Naming/PredicateName
       def has_progress?
         File.exist?(@progress_file) && load_progress['translated_strings'].any?
       end
@@ -53,9 +52,11 @@ module Fastlane
         end
       end
 
-      def translated_strings
+      # rubocop:disable Naming/AccessorMethodName
+      def get_translated_strings
         load_progress['translated_strings']
       end
+      # rubocop:enable Naming/AccessorMethodName
 
       private
 
