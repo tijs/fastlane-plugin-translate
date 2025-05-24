@@ -262,8 +262,12 @@ module Fastlane
           localization = string_data.dig('localizations', target_language, 'stringUnit')
           next unless localization
 
-          # Check if untranslated (state: "new" and empty value)
-          next unless localization['state'] == 'new' && (localization['value'].nil? || localization['value'].empty?)
+          # Check if NOT fully translated (inverse of the translation stats logic)
+          # A string is considered translated only if: state == 'translated' AND has non-empty value
+          is_fully_translated = localization['state'] == 'translated' && 
+                               localization['value'] && !localization['value'].empty?
+          next if is_fully_translated
+          
           # Skip if already translated in progress
           next if already_translated[string_key]
 
