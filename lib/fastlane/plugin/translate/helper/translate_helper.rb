@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'fastlane_core/ui/ui'
 
 module Fastlane
@@ -9,7 +11,7 @@ module Fastlane
       # as `Helper::TranslateHelper.your_method`
       #
       def self.show_message
-        UI.message("Hello from the translate plugin helper!")
+        UI.message('Hello from the translate plugin helper!')
       end
     end
   end

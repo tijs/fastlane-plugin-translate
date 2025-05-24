@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'spec_helper'
 
 describe Fastlane::Translate::LanguageRegistry do
@@ -26,4 +28,4 @@ describe Fastlane::Translate::LanguageRegistry do
       expect(described_class.valid_language?('unknown')).to be false
     end
   end
-end 
+end

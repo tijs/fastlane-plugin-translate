@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'fastlane/plugin/translate/version'
 
 module Fastlane

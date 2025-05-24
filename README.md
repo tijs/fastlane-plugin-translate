@@ -235,7 +235,6 @@ This comment becomes context for better translation quality.
 
 1. Clone the repository
 2. Run `bundle install`
-3. Install dependencies: `bundle install`
 
 ### Testing
 
@@ -255,21 +254,6 @@ bundle exec rspec spec/language_registry_spec.rb
 bundle exec rspec spec/deepl_language_mapper_spec.rb
 ```
 
-#### Integration Tests
-
-Run the integration test to verify all components work together:
-
-```bash
-ruby test/integration_test.rb
-```
-
-This will test:
-
-- Language Registry functionality
-- DeepL Language Mapper
-- Translation Progress tracking
-- Action registration and parameters
-
 #### Code Quality
 
 Run RuboCop for style checking:
@@ -284,11 +268,23 @@ Auto-fix correctable issues:
 bundle exec rubocop -a
 ```
 
+#### Manual Testing
+
+To test the plugin manually with a real project:
+
+```bash
+# Export your DeepL API key
+export DEEPL_AUTH_KEY="your-api-key-here"
+
+# Test the plugin
+bundle exec fastlane translate_with_deepl
+```
+
 ### Requirements
 
 - Ruby >= 3.4
 - Fastlane >= 2.0.0
-- DeepL API account (Free or Pro)
+- DeepL API account (Free or Pro) for manual testing
 
 ## Issues and Feedback
 

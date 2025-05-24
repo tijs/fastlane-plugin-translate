@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Fastlane
   module Translate
     class LanguageRegistry
@@ -11,7 +13,7 @@ module Fastlane
         'cs' => { name: 'Czech', variants: [] },
         'da' => { name: 'Danish', variants: [] },
         'nl' => { name: 'Dutch', variants: [] },
-        'en' => { name: 'English', variants: ['en-US', 'en-GB', 'en-AU', 'en-CA'] },
+        'en' => { name: 'English', variants: %w[en-US en-GB en-AU en-CA] },
         'en-US' => { name: 'English (United States)', variants: [] },
         'en-GB' => { name: 'English (United Kingdom)', variants: [] },
         'en-AU' => { name: 'English (Australia)', variants: [] },
@@ -31,13 +33,13 @@ module Fastlane
         'ms' => { name: 'Malay', variants: [] },
         'nb' => { name: 'Norwegian Bokmål', variants: [] },
         'pl' => { name: 'Polish', variants: [] },
-        'pt' => { name: 'Portuguese', variants: ['pt-BR', 'pt-PT'] },
+        'pt' => { name: 'Portuguese', variants: %w[pt-BR pt-PT] },
         'pt-BR' => { name: 'Portuguese (Brazil)', variants: [] },
         'pt-PT' => { name: 'Portuguese (Portugal)', variants: [] },
         'ro' => { name: 'Romanian', variants: [] },
         'ru' => { name: 'Russian', variants: [] },
         'sk' => { name: 'Slovak', variants: [] },
-        'es' => { name: 'Spanish', variants: ['es-MX', 'es-ES'] },
+        'es' => { name: 'Spanish', variants: %w[es-MX es-ES] },
         'es-MX' => { name: 'Spanish (Mexico)', variants: [] },
         'es-ES' => { name: 'Spanish (Spain)', variants: [] },
         'sv' => { name: 'Swedish', variants: [] },
@@ -45,7 +47,7 @@ module Fastlane
         'tr' => { name: 'Turkish', variants: [] },
         'uk' => { name: 'Ukrainian', variants: [] },
         'vi' => { name: 'Vietnamese', variants: [] },
-        'zh' => { name: 'Chinese', variants: ['zh-Hans', 'zh-Hant', 'zh-HK'] },
+        'zh' => { name: 'Chinese', variants: %w[zh-Hans zh-Hant zh-HK] },
         'zh-Hans' => { name: 'Chinese (Simplified)', variants: [] },
         'zh-Hant' => { name: 'Chinese (Traditional)', variants: [] },
         'zh-HK' => { name: 'Chinese (Hong Kong)', variants: [] }
@@ -59,11 +61,11 @@ module Fastlane
         APPLE_LANGUAGES.dig(code, :name) || code
       end
 
-      def self.has_variants?(code)
+      def self.variants?(code)
         APPLE_LANGUAGES.dig(code, :variants)&.any? || false
       end
 
-      def self.get_variants(code)
+      def self.variants(code)
         APPLE_LANGUAGES.dig(code, :variants) || []
       end
 
@@ -72,4 +74,4 @@ module Fastlane
       end
     end
   end
-end 
+end

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'spec_helper'
 
 describe Fastlane::Translate::DeepLLanguageMapper do
@@ -56,9 +58,9 @@ describe Fastlane::Translate::DeepLLanguageMapper do
 
   describe '.supported_languages_from_list' do
     it 'filters out unsupported languages' do
-      input_languages = ['en', 'de', 'fr', 'hi', 'unknown']
+      input_languages = %w[en de fr hi unknown]
       result = described_class.supported_languages_from_list(input_languages)
-      
+
       expect(result).to include('en', 'de', 'fr')
       expect(result).not_to include('hi', 'unknown')
     end
@@ -66,11 +68,11 @@ describe Fastlane::Translate::DeepLLanguageMapper do
 
   describe '.unsupported_languages' do
     it 'returns only unsupported languages' do
-      input_languages = ['en', 'de', 'fr', 'hi', 'unknown']
+      input_languages = %w[en de fr hi unknown]
       result = described_class.unsupported_languages(input_languages)
-      
+
       expect(result).to include('hi', 'unknown')
       expect(result).not_to include('en', 'de', 'fr')
     end
   end
-end 
+end

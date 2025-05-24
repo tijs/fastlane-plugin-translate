@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'json'
 require 'time'
 
@@ -6,6 +8,7 @@ module Fastlane
     class TranslationProgress
       def initialize(xcstrings_path, target_language)
         @progress_file = "#{xcstrings_path}.translation_progress_#{target_language}.json"
+        @translated_strings = {}
       end
 
       def save_translated_strings(translated_strings)
@@ -13,24 +16,24 @@ module Fastlane
         progress['translated_strings'].merge!(translated_strings)
         progress['last_updated'] = Time.now.iso8601
         progress['total_translated'] = progress['translated_strings'].size
-        
+
         File.write(@progress_file, JSON.pretty_generate(progress))
         UI.verbose("💾 Saved progress: #{translated_strings.size} new translations")
       end
 
+      def progress?
+        File.exist?(@progress_file) && load_progress['translated_strings'].any?
+      end
+
       def load_progress
         return default_progress unless File.exist?(@progress_file)
-        
+
         begin
           JSON.parse(File.read(@progress_file))
         rescue JSON::ParserError => e
           UI.important("⚠️ Corrupted progress file, starting fresh: #{e.message}")
           default_progress
         end
-      end
-
-      def has_progress?
-        File.exist?(@progress_file) && load_progress['translated_strings'].any?
       end
 
       def progress_summary
@@ -44,11 +47,11 @@ module Fastlane
       def cleanup
         if File.exist?(@progress_file)
           File.delete(@progress_file)
-          UI.verbose("🗑️ Cleaned up progress file")
+          UI.verbose('🗑️ Cleaned up progress file')
         end
       end
 
-      def get_translated_strings
+      def translated_strings
         load_progress['translated_strings']
       end
 
@@ -63,4 +66,4 @@ module Fastlane
       end
     end
   end
-end 
+end

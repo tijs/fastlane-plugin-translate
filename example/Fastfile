@@ -1,110 +1,112 @@
+# frozen_string_literal: true
+
 # Example Fastfile for fastlane-plugin-translate
 
 default_platform(:ios)
 
 platform :ios do
-  desc "Interactive translation - prompts user to select language"
+  desc 'Interactive translation - prompts user to select language'
   lane :translate_interactive do
     translate_with_deepl
   end
 
-  desc "Translate to German with formal style"
+  desc 'Translate to German with formal style'
   lane :translate_german do
     translate_with_deepl(
-      target_language: "de",
-      formality: "more"
+      target_language: 'de',
+      formality: 'more'
     )
   end
 
-  desc "Translate to French and notify team"
+  desc 'Translate to French and notify team'
   lane :translate_french_notify do
     count = translate_with_deepl(
-      target_language: "fr",
-      formality: "prefer_more",
+      target_language: 'fr',
+      formality: 'prefer_more',
       batch_size: 15
     )
-    
+
     # Use shared values to get translation info
     target_lang = lane_context[SharedValues::TRANSLATE_WITH_DEEPL_TARGET_LANGUAGE]
     backup_file = lane_context[SharedValues::TRANSLATE_WITH_DEEPL_BACKUP_FILE]
-    
+
     # Send notification (example)
     puts "✅ Translated #{count} strings to #{target_lang}"
     puts "📄 Backup: #{backup_file}"
   end
 
-  desc "Batch translate multiple languages"
+  desc 'Batch translate multiple languages'
   lane :translate_batch do
-    languages = ["de", "fr", "es", "it", "nl"]
-    
+    languages = %w[de fr es it nl]
+
     languages.each do |lang|
       UI.message("🔄 Starting translation for #{lang}...")
-      
+
       begin
         count = translate_with_deepl(
           target_language: lang,
           batch_size: 25
         )
         UI.success("✅ #{lang}: #{count} strings translated")
-      rescue => e
+      rescue StandardError => e
         UI.error("❌ Failed to translate #{lang}: #{e.message}")
         # Continue with next language
       end
     end
   end
 
-  desc "Translate using free API"
+  desc 'Translate using free API'
   lane :translate_free do
     translate_with_deepl(
-      target_language: "de",
+      target_language: 'de',
       free_api: true
     )
   end
 
-  desc "Translate specific file"
+  desc 'Translate specific file'
   lane :translate_specific_file do
     translate_with_deepl(
-      xcstrings_path: "./MyApp/Localizable.xcstrings",
-      target_language: "ja"
+      xcstrings_path: './MyApp/Localizable.xcstrings',
+      target_language: 'ja'
     )
   end
 end
 
 # Add more complex automation examples
 platform :ios do
-  desc "Full localization workflow"
+  desc 'Full localization workflow'
   lane :localize_app do
     # 1. Build the app first to generate latest strings
-    build_app(scheme: "MyApp", destination: "generic/platform=iOS Simulator")
-    
+    build_app(scheme: 'MyApp', destination: 'generic/platform=iOS Simulator')
+
     # 2. Translate to priority languages
-    priority_languages = ["de", "fr", "es", "ja"]
-    
+    priority_languages = %w[de fr es ja]
+
     priority_languages.each do |lang|
       translate_with_deepl(
         target_language: lang,
-        formality: lang == "de" ? "more" : nil
+        formality: lang == 'de' ? 'more' : nil
       )
     end
-    
+
     # 3. Commit translations
-    git_add(path: "**/Localizable.xcstrings")
+    git_add(path: '**/Localizable.xcstrings')
     git_commit(
-      path: "**/Localizable.xcstrings",
+      path: '**/Localizable.xcstrings',
       message: "🌍 Update translations for #{priority_languages.join(', ')}"
     )
-    
-    UI.success("🎉 Localization workflow completed!")
+
+    UI.success('🎉 Localization workflow completed!')
   end
 
-  desc "Validate translations exist"
+  desc 'Validate translations exist'
   lane :validate_translations do
-    required_languages = ["de", "fr", "es"]
-    
+    required_languages = %w[de fr es]
+
     # This could check translation percentages and fail if below threshold
     required_languages.each do |lang|
       # Your validation logic here
       UI.message("✅ #{lang} translations validated")
     end
   end
-end 
+end

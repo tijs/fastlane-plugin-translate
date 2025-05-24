@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Fastlane
   module Translate
     class DeepLLanguageMapper
@@ -59,18 +61,21 @@ module Fastlane
       def self.get_source_language(ios_language_code)
         mapping = DEEPL_MAPPINGS[ios_language_code]
         return nil unless mapping
+
         mapping[:source]
       end
 
       def self.get_target_language(ios_language_code)
         mapping = DEEPL_MAPPINGS[ios_language_code]
         return nil unless mapping
+
         mapping[:target]
       end
 
       def self.supports_formality?(ios_language_code)
         target_lang = get_target_language(ios_language_code)
         return false unless target_lang
+
         FORMALITY_SUPPORTED.include?(target_lang)
       end
 
@@ -87,4 +92,4 @@ module Fastlane
       end
     end
   end
-end 
+end
