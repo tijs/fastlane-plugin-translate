@@ -446,7 +446,7 @@ module Fastlane
             key: :batch_size,
             description: 'Number of strings to translate per API call',
             type: Integer,
-            default_value: 20,
+            default_value: 50,
             verify_block: proc do |value|
               UI.user_error!('Batch size must be between 1 and 50') unless (1..50).cover?(value)
             end
