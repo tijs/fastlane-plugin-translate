@@ -3,7 +3,7 @@
 # Test script for fastlane-plugin-translate
 require 'bundler/setup'
 require 'fastlane'
-require_relative 'lib/fastlane/plugin/translate'
+require_relative '../lib/fastlane/plugin/translate'
 
 puts "🧪 Testing fastlane-plugin-translate\n\n"
 

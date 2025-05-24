@@ -231,9 +231,64 @@ This comment becomes context for better translation quality.
 
 ## Development
 
+### Setup
+
 1. Clone the repository
 2. Run `bundle install`
-3. Run tests with `bundle exec rspec`
+3. Install dependencies: `bundle install`
+
+### Testing
+
+#### Unit Tests (RSpec)
+
+Run the full test suite:
+
+```bash
+bundle exec rspec
+```
+
+Run specific test files:
+
+```bash
+bundle exec rspec spec/translate_with_deepl_action_spec.rb
+bundle exec rspec spec/language_registry_spec.rb
+bundle exec rspec spec/deepl_language_mapper_spec.rb
+```
+
+#### Integration Tests
+
+Run the integration test to verify all components work together:
+
+```bash
+ruby test/integration_test.rb
+```
+
+This will test:
+
+- Language Registry functionality
+- DeepL Language Mapper
+- Translation Progress tracking
+- Action registration and parameters
+
+#### Code Quality
+
+Run RuboCop for style checking:
+
+```bash
+bundle exec rubocop
+```
+
+Auto-fix correctable issues:
+
+```bash
+bundle exec rubocop -a
+```
+
+### Requirements
+
+- Ruby >= 3.4
+- Fastlane >= 2.0.0
+- DeepL API account (Free or Pro)
 
 ## Issues and Feedback
 
