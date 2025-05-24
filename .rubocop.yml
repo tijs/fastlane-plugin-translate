@@ -1,7 +1,10 @@
----
+# Configuration for Ruby style enforcement
+# Focused on genuine issues while accommodating fastlane plugin patterns
+
 require:
 - rubocop/require_tools
 - rubocop-performance
+
 AllCops:
   TargetRubyVersion: 3.3
   NewCops: enable
@@ -18,6 +21,10 @@ AllCops:
   - "**/lib/assets/MatchfileTemplate"
   - "**/spec/fixtures/broken_files/broken_file.rb"
   - "**/*.provisionprofile"
+
+# Disable problematic naming rules that conflict with fastlane APIs
+Naming/PredicateName:
+  Enabled: false
 
 # Metrics - Allow larger values for fastlane plugins
 Metrics/ClassLength:

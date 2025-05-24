@@ -61,9 +61,11 @@ module Fastlane
         APPLE_LANGUAGES.dig(code, :name) || code
       end
 
-      def self.variants?(code)
+      # rubocop:disable Naming/PredicateName
+      def self.has_variants?(code)
         APPLE_LANGUAGES.dig(code, :variants)&.any? || false
       end
+      # rubocop:enable Naming/PredicateName
 
       def self.variants(code)
         APPLE_LANGUAGES.dig(code, :variants) || []
