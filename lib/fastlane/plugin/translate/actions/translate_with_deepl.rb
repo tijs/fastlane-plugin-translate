@@ -321,18 +321,16 @@ module Fastlane
           max_retries = 3
           
           begin
-            # Build translation options
-            translation_options = {
-              source_lang: source_lang,
-              target_lang: target_lang
-            }
+            # Build translation options (exclude source_lang and target_lang)
+            translation_options = {}
             translation_options[:formality] = formality if formality
             
             # Get context from first item if available (DeepL applies to all)
             first_context = batch.first&.last&.dig('context')
             translation_options[:context] = first_context if first_context
             
-            translations = DeepL.translate(texts_to_translate, **translation_options)
+            # Call DeepL with positional arguments for source_lang and target_lang
+            translations = DeepL.translate(texts_to_translate, source_lang, target_lang, translation_options)
             
             # Save translations to progress
             translated_batch = {}
