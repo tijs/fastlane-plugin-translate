@@ -14,16 +14,13 @@ Automatically translate iOS `Localizable.xcstrings` files using DeepL API. This 
 
 ## Features
 
-- 🔍 **Auto-discovery**: Automatically finds your `Localizable.xcstrings` file
-- 📊 **Translation analysis**: Shows translation progress for each language
-- 🎯 **Smart targeting**: Only translates untranslated strings (state: "new" with empty values)
-- 💾 **Progress tracking**: Saves progress between runs to avoid re-translating
-- 🎭 **Formality support**: Automatically detects and offers formality options for supported languages
-- 📝 **Context extraction**: Uses comments from xcstrings as translation context
-- 🔄 **Batch processing**: Efficiently handles large numbers of strings
-- 🛡️ **Error recovery**: Comprehensive error handling with user choices
-- 📄 **Automatic backups**: Creates timestamped backups before translation
-- ✅ **Validation**: Ensures output file is valid JSON
+- **Language selection with progress**: Shows translation completeness for each language
+- **Smart targeting**: Only translates missing strings, preserves existing translations
+- **Formality options**: Formal/informal translation styles for supported languages
+- **Context-aware translation**: Uses xcstrings comments to improve translation quality
+- **Progress tracking**: Resume interrupted translations without starting over
+- **Automatic backups**: Safe translation with rollback capability
+- **Error recovery**: Handle API failures gracefully with retry options
 
 ## Getting Started
 
