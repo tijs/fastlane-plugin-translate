@@ -1,6 +1,11 @@
 # fastlane-plugin-translate
 
+<div align="center">
+  <img src="fastlane-action-translate-logo.png" alt="Fastlane Translate Plugin Logo" width="200"/>
+</div>
+
 [![fastlane Plugin Badge](https://rawcdn.githack.com/fastlane/fastlane/master/fastlane/assets/plugin-badge.svg)](https://rubygems.org/gems/fastlane-plugin-translate)
+[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-support-yellow.svg?style=flat)](https://buymeacoffee.com/xocrgwybbs)
 
 ## About translate
 
