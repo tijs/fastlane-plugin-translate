@@ -21,10 +21,24 @@ Automatically translate iOS `Localizable.xcstrings` files using DeepL API. This 
 
 ## Getting Started
 
-Add this plugin to your project:
+### Install from RubyGems (Recommended)
 
 ```bash
 fastlane add_plugin translate
+```
+
+### Install from GitHub (Latest Development Version)
+
+Add to your `Gemfile`:
+
+```ruby
+gem "fastlane-plugin-translate", git: "https://github.com/tijs/fastlane-plugin-translate"
+```
+
+Then run:
+
+```bash
+bundle install
 ```
 
 ## Setup
