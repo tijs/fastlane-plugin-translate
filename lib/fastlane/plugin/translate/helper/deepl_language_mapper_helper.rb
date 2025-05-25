@@ -1,8 +1,12 @@
 # frozen_string_literal: true
 
+require 'fastlane_core/ui/ui'
+
 module Fastlane
-  module Translate
-    class DeepLLanguageMapper
+  UI = FastlaneCore::UI unless Fastlane.const_defined?(:UI)
+
+  module Helper
+    class DeeplLanguageMapperHelper
       # DeepL API language mappings
       # Based on: https://developers.deepl.com/docs/resources/supported-languages
       DEEPL_MAPPINGS = {

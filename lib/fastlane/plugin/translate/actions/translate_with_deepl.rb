@@ -14,11 +14,6 @@ module Fastlane
 
     class TranslateWithDeeplAction < Action
       def self.run(params)
-        # Load required modules
-        require_relative '../language_registry'
-        require_relative '../deepl_language_mapper'
-        require_relative '../translation_progress'
-
         # Setup and validation
         setup_deepl_client(params)
         xcstrings_path = find_xcstrings_file(params[:xcstrings_path])
@@ -30,10 +25,10 @@ module Fastlane
         available_languages = extract_available_languages(xcstrings_data)
 
         # Filter languages supported by DeepL
-        supported_languages = Fastlane::Translate::DeepLLanguageMapper.supported_languages_from_list(available_languages)
-        unsupported_languages = Fastlane::Translate::DeepLLanguageMapper.unsupported_languages(available_languages)
+        supported_languages = Helper::DeeplLanguageMapperHelper.supported_languages_from_list(available_languages)
+        unsupported_languages = Helper::DeeplLanguageMapperHelper.unsupported_languages(available_languages)
 
-        UI.important("⚠️  Languages not supported by DeepL: #{unsupported_languages.map { |l| "#{Fastlane::Translate::LanguageRegistry.language_name(l)} (#{l})" }.join(', ')}") if unsupported_languages.any?
+        UI.important("⚠️  Languages not supported by DeepL: #{unsupported_languages.map { |l| "#{Helper::LanguageRegistryHelper.language_name(l)} (#{l})" }.join(', ')}") if unsupported_languages.any?
 
         UI.user_error!('❌ No DeepL-supported languages found in xcstrings file') if supported_languages.empty?
 
@@ -52,7 +47,7 @@ module Fastlane
         Actions.lane_context[SharedValues::TRANSLATE_WITH_DEEPL_BACKUP_FILE] = backup_file
 
         UI.success('🎉 Translation completed!')
-        UI.message("📊 Translated #{translated_count} strings for #{Fastlane::Translate::LanguageRegistry.language_name(target_language)} (#{target_language})")
+        UI.message("📊 Translated #{translated_count} strings for #{Helper::LanguageRegistryHelper.language_name(target_language)} (#{target_language})")
         UI.message("📄 Backup saved: #{backup_file}")
         UI.message('🗑️  You can delete the backup after verifying results')
 
@@ -132,14 +127,16 @@ module Fastlane
 
         # Create display list with language names and translation status
         language_options = available_languages.map do |lang_code|
-          lang_name = Fastlane::Translate::LanguageRegistry.language_name(lang_code)
+          lang_name = Helper::LanguageRegistryHelper.language_name(lang_code)
           stats = language_stats[lang_code]
           percentage = ((stats[:translated].to_f / stats[:total]) * 100).round(1)
 
-          display_name = "#{lang_name} (#{lang_code}): #{percentage}% translated (#{stats[:untranslated]} remaining)"
+          display_name = "#{lang_name} (#{lang_code}): #{percentage}% translated (#{stats[:untranslated]} remaining"
+          display_name += ", #{stats[:skipped_dont_translate]} don't translate" if (stats[:skipped_dont_translate]).positive?
+          display_name += ')'
 
           # Add formality indicator
-          display_name += ' [supports formality]' if Fastlane::Translate::DeepLLanguageMapper.supports_formality?(lang_code)
+          display_name += ' [supports formality]' if Helper::DeeplLanguageMapperHelper.supports_formality?(lang_code)
 
           { display: display_name, code: lang_code, stats: }
         end
@@ -161,10 +158,17 @@ module Fastlane
         languages.each do |lang_code|
           total = 0
           translated = 0
+          skipped_dont_translate = 0
 
           xcstrings_data['strings'].each do |string_key, string_data|
             next if string_key.empty?
             next unless string_data.dig('localizations', lang_code)
+
+            # Skip strings marked as "Don't translate" from statistics
+            if string_data['shouldTranslate'] == false
+              skipped_dont_translate += 1
+              next
+            end
 
             total += 1
             localization = string_data.dig('localizations', lang_code, 'stringUnit')
@@ -178,7 +182,8 @@ module Fastlane
           stats[lang_code] = {
             total:,
             translated:,
-            untranslated: total - translated
+            untranslated: total - translated,
+            skipped_dont_translate:
           }
         end
 
@@ -187,9 +192,9 @@ module Fastlane
 
       def self.detect_and_ask_formality(target_language, formality_param)
         return formality_param if formality_param
-        return nil unless Fastlane::Translate::DeepLLanguageMapper.supports_formality?(target_language)
+        return nil unless Helper::DeeplLanguageMapperHelper.supports_formality?(target_language)
 
-        lang_name = Fastlane::Translate::LanguageRegistry.language_name(target_language)
+        lang_name = Helper::LanguageRegistryHelper.language_name(target_language)
         choice = UI.select(
           "🎭 #{lang_name} supports formality options. Choose style:",
           ['default', 'more (formal)', 'less (informal)', 'prefer_more (formal if possible)', 'prefer_less (informal if possible)']
@@ -205,16 +210,16 @@ module Fastlane
 
       def self.translate_language(xcstrings_data, xcstrings_path, source_language, target_language, formality, params)
         # Validate DeepL support
-        UI.user_error!("❌ Language '#{target_language}' is not supported by DeepL") unless Fastlane::Translate::DeepLLanguageMapper.supported?(target_language)
+        UI.user_error!("❌ Language '#{target_language}' is not supported by DeepL") unless Helper::DeeplLanguageMapperHelper.supported?(target_language)
 
         # Get DeepL language codes
-        deepl_source = Fastlane::Translate::DeepLLanguageMapper.get_source_language(source_language)
-        deepl_target = Fastlane::Translate::DeepLLanguageMapper.get_target_language(target_language)
+        deepl_source = Helper::DeeplLanguageMapperHelper.get_source_language(source_language)
+        deepl_target = Helper::DeeplLanguageMapperHelper.get_target_language(target_language)
 
         UI.message("🔄 Translating from #{deepl_source} to #{deepl_target}")
 
         # Progress setup
-        progress = Fastlane::Translate::TranslationProgress.new(xcstrings_path, target_language)
+        progress = Helper::TranslationProgressHelper.create_progress_tracker(xcstrings_path, target_language)
 
         if progress.has_progress?
           summary = progress.progress_summary
@@ -259,15 +264,21 @@ module Fastlane
         xcstrings_data['strings'].each do |string_key, string_data|
           next if string_key.empty? # Skip empty keys
 
+          # Skip strings marked as "Don't translate" in Xcode
+          if string_data['shouldTranslate'] == false
+            UI.message("⏭️ Skipping string marked as 'Don't translate': \"#{string_key}\"")
+            next
+          end
+
           localization = string_data.dig('localizations', target_language, 'stringUnit')
           next unless localization
 
           # Check if NOT fully translated (inverse of the translation stats logic)
           # A string is considered translated only if: state == 'translated' AND has non-empty value
-          is_fully_translated = localization['state'] == 'translated' && 
-                               localization['value'] && !localization['value'].empty?
+          is_fully_translated = localization['state'] == 'translated' &&
+                                localization['value'] && !localization['value'].empty?
           next if is_fully_translated
-          
+
           # Skip if already translated in progress
           next if already_translated[string_key]
 
@@ -319,16 +330,29 @@ module Fastlane
             # Call DeepL with positional arguments for source_lang and target_lang
             translations = DeepL.translate(texts_to_translate, source_lang, target_lang, translation_options)
 
-            # Save translations to progress
+            # Save translations to progress (only save non-empty translations)
             translated_batch = {}
+            skipped_empty = 0
+
             batch.each_with_index do |(string_key, _), text_index|
               translated_text = translations.is_a?(Array) ? translations[text_index].text : translations.text
-              translated_batch[string_key] = translated_text
+
+              # Only save non-empty translations
+              if translated_text && !translated_text.strip.empty?
+                translated_batch[string_key] = translated_text
+              else
+                skipped_empty += 1
+                UI.important("⚠️ Skipping empty translation for: \"#{string_key}\"")
+              end
             end
 
             progress.save_translated_strings(translated_batch)
             total_translated += translated_batch.size
-            UI.success("✅ Batch #{index + 1} completed (#{translated_batch.size} strings)")
+
+            success_msg = "✅ Batch #{index + 1} completed (#{translated_batch.size} strings translated"
+            success_msg += ", #{skipped_empty} empty translations skipped" if skipped_empty.positive?
+            success_msg += ')'
+            UI.success(success_msg)
           rescue DeepL::Exceptions::AuthorizationFailed
             UI.user_error!('❌ Invalid DeepL API key')
           rescue DeepL::Exceptions::QuotaExceeded
@@ -391,17 +415,27 @@ module Fastlane
         UI.message("📝 Updating xcstrings file with #{translated_strings.size} translations...")
 
         # Update the JSON structure
+        actually_updated = 0
         translated_strings.each do |string_key, translated_text|
           localization = xcstrings_data.dig('strings', string_key, 'localizations', target_language, 'stringUnit')
           next unless localization
 
-          localization['value'] = translated_text
-          localization['state'] = 'translated'
+          # Double-check: only mark as translated if we have actual content
+          if translated_text && !translated_text.strip.empty?
+            localization['value'] = translated_text
+            localization['state'] = 'translated'
+            actually_updated += 1
+          else
+            # Keep as 'new' if translation is empty
+            localization['value'] = translated_text || ''
+            localization['state'] = 'new'
+            UI.important("⚠️ Keeping empty translation as 'new' state: \"#{string_key}\"")
+          end
         end
 
         # Write updated JSON back to file
         File.write(xcstrings_path, JSON.pretty_generate(xcstrings_data))
-        UI.success('💾 Updated xcstrings file')
+        UI.success("💾 Updated xcstrings file (#{actually_updated} marked as translated)")
       end
 
       def self.validate_json_file(xcstrings_path)

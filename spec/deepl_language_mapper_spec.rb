@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-describe Fastlane::Translate::DeepLLanguageMapper do
+describe Fastlane::Helper::DeeplLanguageMapperHelper do
   describe '.supported?' do
     it 'returns true for languages supported by DeepL' do
       expect(described_class.supported?('en')).to be true

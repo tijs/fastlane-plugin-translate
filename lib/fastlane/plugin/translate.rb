@@ -17,7 +17,4 @@ Fastlane::Translate.all_classes.each do |current|
   require current
 end
 
-# Require our language support modules
-require_relative 'translate/language_registry'
-require_relative 'translate/deepl_language_mapper'
-require_relative 'translate/translation_progress'
+# Helper modules are automatically loaded by the all_classes method above

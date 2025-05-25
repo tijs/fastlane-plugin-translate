@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-describe Fastlane::Translate::LanguageRegistry do
+describe Fastlane::Helper::LanguageRegistryHelper do
   describe '.language_name' do
     it 'returns correct language names for common languages' do
       expect(described_class.language_name('en')).to eq('English')

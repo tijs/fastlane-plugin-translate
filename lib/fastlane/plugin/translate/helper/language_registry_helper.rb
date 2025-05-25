@@ -1,8 +1,12 @@
 # frozen_string_literal: true
 
+require 'fastlane_core/ui/ui'
+
 module Fastlane
-  module Translate
-    class LanguageRegistry
+  UI = FastlaneCore::UI unless Fastlane.const_defined?(:UI)
+
+  module Helper
+    class LanguageRegistryHelper
       # Complete list based on Apple's App Store localizations
       # https://developer.apple.com/help/app-store-connect/reference/app-store-localizations/
       APPLE_LANGUAGES = {
@@ -64,7 +68,6 @@ module Fastlane
       def self.has_variants?(code)
         APPLE_LANGUAGES.dig(code, :variants)&.any? || false
       end
-      # rubocop:enable Naming/PredicateName
 
       def self.variants(code)
         APPLE_LANGUAGES.dig(code, :variants) || []

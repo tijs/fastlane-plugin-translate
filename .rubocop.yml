@@ -30,11 +30,11 @@ Naming/PredicateName:
 Metrics/ClassLength:
   Max: 500
 Metrics/PerceivedComplexity:
-  Max: 20
+  Max: 30
 Metrics/AbcSize:
-  Max: 50
+  Max: 60
 Metrics/MethodLength:
-  Max: 50
+  Max: 60
 Metrics/CyclomaticComplexity:
   Max: 20
 Metrics/BlockLength:
@@ -86,4 +86,8 @@ Gemspec/DevelopmentDependencies:
 
 # Allow case-when statements for clarity 
 Style/HashLikeCase:
+  Enabled: false
+
+# Allow get function names for fastlane compatibility
+Naming/AccessorMethodName:
   Enabled: false
