@@ -60,9 +60,29 @@ bundle install
 
 ### Basic Usage
 
+After installation, create a lane in your Fastfile and run it:
+
+```bash
+fastlane ios translate
+```
+
+**Simple dedicated lane:**
+
 ```ruby
-# Automatically detect xcstrings file and show language selection
-translate_with_deepl
+lane :translate do
+  translate_with_deepl
+end
+```
+
+**Within complex workflows:**
+
+```ruby
+lane :prepare_release do
+  build_app
+  translate_with_deepl(target_language: "de")
+  upload_to_testflight
+  slack(message: "New build with German translations available!")
+end
 ```
 
 ### Specify Target Language
