@@ -90,8 +90,7 @@ module Fastlane
 
         # Multiple files found, let user choose
         UI.message('📁 Multiple xcstrings files found:')
-        selected = UI.select('Choose file:', xcstrings_files)
-        selected
+        UI.select('Choose file:', xcstrings_files)
       end
 
       def self.create_backup(xcstrings_path)
@@ -149,21 +148,30 @@ module Fastlane
         # Show all languages with their translation status
         UI.message('📋 Available languages for translation:')
 
+        # Display numbered list
+        language_options.each_with_index do |option, index|
+          UI.message("  #{index + 1}. #{option[:display]}")
+        end
+
         # Force interactive mode and ensure we wait for user input
         $stdout.flush
         $stderr.flush
 
         # Use a loop to ensure we get valid input
         loop do
-          selected_display = UI.select('Choose target language:', language_options.map { |opt| opt[:display] })
+          choice = UI.input("Choose target language (1-#{language_options.count}): ").strip
 
-          # Find the corresponding language code
-          selected_option = language_options.find { |opt| opt[:display] == selected_display }
-          if selected_option
-            return selected_option[:code]
-          else
-            UI.error('❌ Invalid selection. Please try again.')
+          # Validate numeric input
+          if choice.match?(/^\d+$/)
+            choice_num = choice.to_i
+            if choice_num >= 1 && choice_num <= language_options.count
+              selected_option = language_options[choice_num - 1]
+              UI.message("✅ Selected: #{selected_option[:display]}")
+              return selected_option[:code]
+            end
           end
+
+          UI.error("❌ Invalid selection '#{choice}'. Please enter a number between 1 and #{language_options.count}.")
         rescue Interrupt
           UI.user_error!('👋 Translation cancelled by user')
         end
@@ -228,7 +236,19 @@ module Fastlane
         return nil unless Helper::DeeplLanguageMapperHelper.supports_formality?(target_language)
 
         lang_name = Helper::LanguageRegistryHelper.language_name(target_language)
-        options = ['default', 'more (formal)', 'less (informal)', 'prefer_more (formal if possible)', 'prefer_less (informal if possible)']
+        options = [
+          { display: 'default (no formality preference)', value: nil },
+          { display: 'more (formal)', value: 'more' },
+          { display: 'less (informal)', value: 'less' },
+          { display: 'prefer_more (formal if possible)', value: 'prefer_more' },
+          { display: 'prefer_less (informal if possible)', value: 'prefer_less' }
+        ]
+
+        # Display numbered list
+        UI.message("🎭 #{lang_name} supports formality options. Choose style:")
+        options.each_with_index do |option, index|
+          UI.message("  #{index + 1}. #{option[:display]}")
+        end
 
         # Force interactive mode and ensure we wait for user input
         $stdout.flush
@@ -236,21 +256,19 @@ module Fastlane
 
         # Use a loop to ensure we get valid input
         loop do
-          choice = UI.select(
-            "🎭 #{lang_name} supports formality options. Choose style:",
-            options
-          )
+          choice = UI.input("Choose formality style (1-#{options.count}): ").strip
 
-          # Process the choice and return the result
-          case choice
-          when 'default' then return nil
-          when 'more (formal)' then return 'more'
-          when 'less (informal)' then return 'less'
-          when 'prefer_more (formal if possible)' then return 'prefer_more'
-          when 'prefer_less (informal if possible)' then return 'prefer_less'
-          else
-            UI.error('❌ Invalid selection. Please try again.')
+          # Validate numeric input
+          if choice.match?(/^\d+$/)
+            choice_num = choice.to_i
+            if choice_num >= 1 && choice_num <= options.count
+              selected_option = options[choice_num - 1]
+              UI.message("✅ Selected: #{selected_option[:display]}")
+              return selected_option[:value]
+            end
           end
+
+          UI.error("❌ Invalid selection '#{choice}'. Please enter a number between 1 and #{options.count}.")
         rescue Interrupt
           UI.user_error!('👋 Translation cancelled by user')
         end
@@ -272,17 +290,33 @@ module Fastlane
         if progress.has_progress?
           summary = progress.progress_summary
           UI.message("📈 Found existing progress: #{summary[:translated_count]} strings translated")
-          options = ['Yes, continue', 'No, start fresh']
+
+          # Display numbered options
+          UI.message('Continue from where you left off?')
+          UI.message('  1. Yes, continue')
+          UI.message('  2. No, start fresh')
 
           # Force interactive mode and ensure we wait for user input
           $stdout.flush
           $stderr.flush
 
-          choice = UI.select('Continue from where you left off?', options)
+          # Use a loop to ensure we get valid input
+          loop do
+            choice = UI.input('Choose option (1-2): ').strip
 
-          case choice
-          when 'No, start fresh'
-            progress.cleanup
+            case choice
+            when '1'
+              UI.message('✅ Continuing from existing progress')
+              break
+            when '2'
+              UI.message('✅ Starting fresh')
+              progress.cleanup
+              break
+            else
+              UI.error("❌ Invalid selection '#{choice}'. Please enter 1 or 2.")
+            end
+          rescue Interrupt
+            UI.user_error!('👋 Translation cancelled by user')
           end
         end
 
