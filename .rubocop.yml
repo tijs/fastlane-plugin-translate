@@ -54,6 +54,7 @@ Require/MissingRequireStatement:
   - "**/*.gemspec"
   - "**/actions/**/*.rb"
   - "lib/fastlane/plugin/translate/actions/**/*.rb"
+  - "lib/fastlane/plugin/translate/helper/**/*.rb"
   - "lib/fastlane/plugin/translate/translation_progress.rb"
 
 # Standard fastlane style

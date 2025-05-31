@@ -121,7 +121,7 @@ describe Fastlane::Actions::TranslateWithDeeplAction do
       expect(stats['de'][:untranslated]).to eq(1)
     end
 
-    it 'ignores strings without localizations for target language' do
+    it 'includes strings without localizations for target language as untranslated' do
       xcstrings_missing_lang = {
         'strings' => {
           'OnlyEnglish' => {
@@ -139,9 +139,30 @@ describe Fastlane::Actions::TranslateWithDeeplAction do
 
       stats = Fastlane::Actions::TranslateWithDeeplAction.calculate_translation_stats(xcstrings_missing_lang, ['de'])
 
-      # Should only count 'HasGerman', not 'OnlyEnglish'
-      expect(stats['de'][:total]).to eq(1)
+      # Should count both strings: 'HasGerman' (has German, translated) + 'OnlyEnglish' (missing German, untranslated)
+      expect(stats['de'][:total]).to eq(2)
       expect(stats['de'][:translated]).to eq(1)
+      expect(stats['de'][:untranslated]).to eq(1)
+    end
+
+    it 'handles completely empty string objects as untranslated' do
+      xcstrings_with_empty_objects = {
+        'strings' => {
+          'CompletelyNew' => {},
+          'NormalString' => {
+            'localizations' => {
+              'de' => { 'stringUnit' => { 'state' => 'translated', 'value' => 'Normal' } }
+            }
+          }
+        }
+      }
+
+      stats = Fastlane::Actions::TranslateWithDeeplAction.calculate_translation_stats(xcstrings_with_empty_objects, ['de'])
+
+      # Should count both: 'CompletelyNew' (no localizations, untranslated) + 'NormalString' (has German, translated)
+      expect(stats['de'][:total]).to eq(2)
+      expect(stats['de'][:translated]).to eq(1)
+      expect(stats['de'][:untranslated]).to eq(1)
     end
 
     it 'handles mixed shouldTranslate values correctly' do
@@ -220,7 +241,7 @@ describe Fastlane::Actions::TranslateWithDeeplAction do
       expect(untranslated['Translatable']['source_text']).to eq('Translatable')
     end
 
-    it 'skips strings without source text' do
+    it 'uses string key as source text when no source text available' do
       xcstrings_no_source = {
         'strings' => {
           'NoSource' => {
@@ -235,7 +256,28 @@ describe Fastlane::Actions::TranslateWithDeeplAction do
         xcstrings_no_source, 'en', 'de', {}
       )
 
-      expect(untranslated).to be_empty
+      expect(untranslated['NoSource']['source_text']).to eq('NoSource')
+    end
+
+    it 'extracts completely new strings with no localizations' do
+      xcstrings_with_empty_objects = {
+        'strings' => {
+          'CompletelyNew' => {},
+          'HasLocalizations' => {
+            'localizations' => {
+              'en' => { 'stringUnit' => { 'state' => 'translated', 'value' => 'Has Localizations' } },
+              'de' => { 'stringUnit' => { 'state' => 'translated', 'value' => 'Hat Lokalisierungen' } }
+            }
+          }
+        }
+      }
+
+      untranslated = Fastlane::Actions::TranslateWithDeeplAction.extract_untranslated_strings(
+        xcstrings_with_empty_objects, 'en', 'de', {}
+      )
+
+      expect(untranslated['CompletelyNew']['source_text']).to eq('CompletelyNew')
+      expect(untranslated.keys).not_to include('HasLocalizations')
     end
   end
 

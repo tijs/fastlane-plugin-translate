@@ -174,16 +174,32 @@ module Fastlane
         # Sort by most untranslated first (prioritize languages that need work)
         language_options.sort_by! { |opt| -opt[:stats][:untranslated] }
 
+        # Always prompt user for selection - no automatic selection
         UI.message('📋 Available languages for translation:')
         options_with_quit = language_options.map { |opt| opt[:display] } + ['❌ Quit']
-        selected_display = UI.select('Choose target language:', options_with_quit)
 
-        # Handle quit selection
-        return :quit if selected_display == '❌ Quit'
+        # Force interactive mode and ensure we wait for user input
+        $stdout.flush
+        $stderr.flush
 
-        # Find the corresponding language code
-        selected_option = language_options.find { |opt| opt[:display] == selected_display }
-        selected_option[:code]
+        # Use a loop to ensure we get valid input
+        loop do
+          selected_display = UI.select('Choose target language:', options_with_quit)
+
+          # Handle quit selection
+          return :quit if selected_display == '❌ Quit'
+
+          # Find the corresponding language code
+          selected_option = language_options.find { |opt| opt[:display] == selected_display }
+          if selected_option
+            return selected_option[:code]
+          else
+            UI.error('❌ Invalid selection. Please try again.')
+          end
+        rescue Interrupt
+          UI.important('👋 Translation cancelled by user')
+          return :quit
+        end
       end
 
       def self.calculate_translation_stats(xcstrings_data, languages)
@@ -195,8 +211,8 @@ module Fastlane
           skipped_dont_translate = 0
 
           xcstrings_data['strings'].each do |string_key, string_data|
+            # Skip empty string keys as they're usually not real translatable content
             next if string_key.empty?
-            next unless string_data.dig('localizations', lang_code)
 
             # Skip strings marked as "Don't translate" from statistics
             if string_data['shouldTranslate'] == false
@@ -204,11 +220,27 @@ module Fastlane
               next
             end
 
-            total += 1
-            localization = string_data.dig('localizations', lang_code, 'stringUnit')
+            # Check if this string has any localizations at all
+            if !string_data['localizations'] || string_data['localizations'].empty?
+              # String has no localizations - count as untranslated for this language
+              total += 1
+              next
+            end
 
-            if localization && localization['state'] == 'translated' &&
-               localization['value'] && !localization['value'].empty?
+            # Check if this string has a localization for the target language
+            localization = string_data.dig('localizations', lang_code, 'stringUnit')
+            unless localization
+              # String exists but has no localization for this specific language - count as untranslated
+              total += 1
+              next
+            end
+
+            total += 1
+
+            # Count as translated ONLY if state is 'translated' AND has non-empty value
+            # Strings with state 'new', 'needs_review', or empty values are untranslated
+            if localization['state'] == 'translated' &&
+               localization['value'] && !localization['value'].strip.empty?
               translated += 1
             end
           end
@@ -316,21 +348,45 @@ module Fastlane
             next
           end
 
+          # Skip if already translated in progress
+          next if already_translated[string_key]
+
+          # Check if this string has any localizations at all
+          if !string_data['localizations'] || string_data['localizations'].empty?
+            # String has no localizations - it's completely new and needs translation
+            # Use the string key itself as the source text since there's no source localization
+            untranslated[string_key] = {
+              'source_text' => string_key,
+              'context' => extract_string_context(string_key, string_data)
+            }
+            next
+          end
+
+          # Check if target language has a localization
           localization = string_data.dig('localizations', target_language, 'stringUnit')
-          next unless localization
+          unless localization
+            # String exists but has no localization for target language
+            # Get source text from source language or use string key as fallback
+            source_text = string_data.dig('localizations', source_language, 'stringUnit', 'value')
+            source_text = string_key if source_text.nil? || source_text.strip.empty?
+
+            untranslated[string_key] = {
+              'source_text' => source_text,
+              'context' => extract_string_context(string_key, string_data)
+            }
+            next
+          end
 
           # Check if NOT fully translated (inverse of the translation stats logic)
           # A string is considered translated only if: state == 'translated' AND has non-empty value
           is_fully_translated = localization['state'] == 'translated' &&
-                                localization['value'] && !localization['value'].empty?
+                                localization['value'] && !localization['value'].strip.empty?
           next if is_fully_translated
-
-          # Skip if already translated in progress
-          next if already_translated[string_key]
 
           # Get source text from source language
           source_text = string_data.dig('localizations', source_language, 'stringUnit', 'value')
-          next if source_text.nil? || source_text.empty?
+          # Use string key as fallback if no source text available
+          source_text = string_key if source_text.nil? || source_text.strip.empty?
 
           context = extract_string_context(string_key, string_data)
           untranslated[string_key] = {
