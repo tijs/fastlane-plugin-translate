@@ -10,9 +10,11 @@
 
 ## About translate
 
-Automatically translate iOS `Localizable.xcstrings` files using DeepL API. This plugin helps you efficiently manage app localization by translating untranslated strings while preserving your existing translations.
+Automatically translate iOS `Localizable.xcstrings` files and App Store metadata using DeepL API. This plugin helps you efficiently manage app localization by translating untranslated strings while preserving your existing translations, and seamlessly translate App Store metadata files like release notes and descriptions to all your supported languages.
 
 ## Features
+
+### App Strings Translation
 
 - **Language selection with progress**: Shows translation completeness for each language
 - **Smart targeting**: Only translates missing strings, preserves existing translations
@@ -21,6 +23,14 @@ Automatically translate iOS `Localizable.xcstrings` files using DeepL API. This 
 - **Progress tracking**: Resume interrupted translations without starting over
 - **Automatic backups**: Safe translation with rollback capability
 - **Error recovery**: Handle API failures gracefully with retry options
+
+### App Store Metadata Translation
+
+- **Auto-detection**: Automatically detects target languages from existing metadata directories
+- **Smart mapping**: Handles App Store locale directory names to DeepL language codes
+- **Multiple files**: Translate release notes, descriptions, keywords, or any metadata file
+- **Batch translation**: Translate to all supported languages in one command
+- **Error resilience**: Continues translating other languages if one fails
 
 ## Getting Started
 
@@ -106,6 +116,173 @@ translate_with_deepl(
   batch_size: 15,
   free_api: true
 )
+```
+
+## App Store Metadata Translation
+
+In addition to translating app strings, the plugin can translate App Store metadata files like release notes, descriptions, and keywords using the `translate_metadata_with_deepl` action.
+
+### Features
+
+- **Auto-detection**: Automatically detects target languages from existing metadata directories
+- **Smart mapping**: Handles App Store locale directory names (e.g., `de-DE`, `fr-FR`) to DeepL language codes
+- **Multiple files**: Translate `release_notes.txt`, `description.txt`, `keywords.txt`, or any metadata file
+- **Backup creation**: Creates backups before translation for safety
+- **Progress tracking**: Shows translation progress for each language
+- **Error resilience**: Continues translating other languages if one fails
+
+### Basic Metadata Translation
+
+```ruby
+# Translate release notes to all detected languages
+translate_metadata_with_deepl(
+  file_name: "release_notes.txt"
+)
+```
+
+### Fastfile Examples
+
+```ruby
+# Translate release notes to all supported languages
+lane :release_notes_translate do
+  translate_metadata_with_deepl(
+    metadata_path: "./fastlane/metadata",
+    source_locale: "en-US",
+    file_name: "release_notes.txt",
+    formality: "prefer_less"
+  )
+end
+
+# Translate app description
+lane :description_translate do
+  translate_metadata_with_deepl(
+    file_name: "description.txt",
+    formality: "prefer_more"
+  )
+end
+
+# Translate any metadata file
+lane :translate_metadata do |options|
+  file_name = options[:file] || UI.input("Enter metadata file name: ")
+  
+  translate_metadata_with_deepl(
+    file_name: file_name,
+    formality: "prefer_less"
+  )
+end
+```
+
+### Advanced Configuration
+
+```ruby
+# Translate only to specific languages
+translate_metadata_with_deepl(
+  file_name: "release_notes.txt",
+  target_languages: ["de", "fr", "es", "ja"],
+  formality: "more"
+)
+
+# Use custom metadata path and source locale
+translate_metadata_with_deepl(
+  metadata_path: "./custom/metadata",
+  source_locale: "en-GB",
+  file_name: "keywords.txt",
+  formality: "prefer_less"
+)
+```
+
+### Metadata Translation Parameters
+
+| Parameter | Description | Default | Required |
+|-----------|-------------|---------|----------|
+| `metadata_path` | Path to fastlane metadata directory | `./fastlane/metadata` | No |
+| `source_locale` | Source language locale (e.g., en-US) | `en-US` | No |
+| `file_name` | Metadata file to translate | `release_notes.txt` | No |
+| `target_languages` | Specific languages to translate to | Auto-detected | No |
+| `formality` | Translation formality setting | Language default | No |
+| `api_token` | DeepL API authentication key | `ENV['DEEPL_AUTH_KEY']` | Yes |
+| `free_api` | Use DeepL Free API endpoint | `false` | No |
+
+### Example Output
+
+```
+🔍 Auto-detecting target languages from metadata directories...
+📁 Found metadata directories for: de, fr, es, ja, ko, zh-Hans
+✅ DeepL API key validated
+💾 Backup created: ./fastlane/metadata/en-US/release_notes.txt.backup_20241201_163535
+
+📋 Translating release_notes.txt from en-US to 6 languages:
+  • German (de)
+  • French (fr)
+  • Spanish (es)
+  • Japanese (ja)
+  • Korean (ko)
+  • Chinese (Simplified) (zh-Hans)
+
+🔄 Translating to German (de)...
+✅ de: Translation completed
+🔄 Translating to French (fr)...
+✅ fr: Translation completed
+🔄 Translating to Spanish (es)...
+✅ es: Translation completed
+
+🎉 Metadata translation completed!
+📊 Successfully translated release_notes.txt for 6 languages
+📄 Backup saved: ./fastlane/metadata/en-US/release_notes.txt.backup_20241201_163535
+```
+
+### Directory Structure
+
+The action expects and maintains the standard fastlane metadata structure:
+
+```
+fastlane/
+└── metadata/
+    ├── en-US/           # Source locale
+    │   ├── release_notes.txt
+    │   ├── description.txt
+    │   └── keywords.txt
+    ├── de-DE/           # German
+    │   ├── release_notes.txt
+    │   └── description.txt
+    ├── fr-FR/           # French
+    │   └── release_notes.txt
+    └── ja/              # Japanese
+        └── release_notes.txt
+```
+
+### Language Mapping
+
+The plugin automatically handles App Store locale directory naming:
+
+| App Store Directory | DeepL Language Code | Language |
+|---------------------|---------------------|----------|
+| `de-DE` | `de` | German |
+| `fr-FR` | `fr` | French |
+| `es-ES` | `es` | Spanish |
+| `nl-NL` | `nl` | Dutch |
+| `no` | `nb` | Norwegian Bokmål |
+| `pt-BR` | `pt-BR` | Portuguese (Brazil) |
+| `pt-PT` | `pt-PT` | Portuguese (Portugal) |
+| `zh-Hans` | `zh` | Chinese (Simplified) |
+
+### Shared Values
+
+The metadata translation action sets these shared values:
+
+- `TRANSLATE_METADATA_WITH_DEEPL_TRANSLATED_COUNT` - Number of languages successfully translated
+- `TRANSLATE_METADATA_WITH_DEEPL_TARGET_LANGUAGES` - Array of target language codes that were translated
+- `TRANSLATE_METADATA_WITH_DEEPL_BACKUP_FILE` - Path to the backup file created
+
+```ruby
+lane :translate_and_upload do
+  count = translate_metadata_with_deepl(file_name: "release_notes.txt")
+  
+  if count > 0
+    upload_to_app_store(skip_binary_upload: true)
+    slack(message: "✅ Translated release notes for #{count} languages and uploaded!")
+  end
+end
 ```
 
 ## Supported Languages
