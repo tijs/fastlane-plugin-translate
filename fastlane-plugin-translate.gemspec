@@ -10,8 +10,8 @@ Gem::Specification.new do |spec|
   spec.author        = 'Tijs Teulings'
   spec.email         = 'hello@tijs.org'
 
-  spec.summary       = 'Automatically translate iOS Localizable.xcstrings files using DeepL API'
-  spec.description   = 'A fastlane plugin to automatically translate iOS Localizable.xcstrings files using DeepL API. Supports progress tracking, formality options, error recovery, and more.'
+  spec.summary       = 'Automatically translate iOS Localizable.xcstrings files and App Store metadata using DeepL API'
+  spec.description   = 'A fastlane plugin to automatically translate iOS Localizable.xcstrings files and App Store metadata files using DeepL API. Supports progress tracking, formality options, error recovery, auto-detection of target languages, and more.'
   spec.homepage      = 'https://github.com/tijs/fastlane-plugin-translate'
   spec.license       = 'MIT'
 
