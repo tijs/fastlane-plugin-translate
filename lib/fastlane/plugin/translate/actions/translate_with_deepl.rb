@@ -332,6 +332,12 @@ module Fastlane
         end
 
         UI.message("📝 Found #{untranslated_strings.count} untranslated strings")
+        
+        # Debug: Show what strings we're about to translate
+        UI.message("🔍 Debug: Strings to translate:")
+        untranslated_strings.each do |string_key, data|
+          UI.message("  - \"#{string_key}\" -> source: \"#{data['source_text']}\"")
+        end
 
         # Batch translation
         translated_count = translate_in_batches(

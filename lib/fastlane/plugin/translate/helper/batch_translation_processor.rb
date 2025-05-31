@@ -11,12 +11,26 @@ module Fastlane
       def self.process_batch(batch, source_lang, target_lang, formality, progress)
         # Prepare batch for DeepL API
         texts_to_translate = batch.map { |_, data| data['source_text'] }
+        
+        UI.message("🔍 Debug: Sending to DeepL:")
+        texts_to_translate.each_with_index do |text, i|
+          UI.message("  #{i + 1}. \"#{text}\"")
+        end
 
         # Build translation options
         translation_options = build_translation_options(formality, batch)
 
         # Call DeepL API
         translations = DeepL.translate(texts_to_translate, source_lang, target_lang, translation_options)
+        
+        UI.message("🔍 Debug: DeepL returned:")
+        if translations.is_a?(Array)
+          translations.each_with_index do |trans, i|
+            UI.message("  #{i + 1}. \"#{trans.text}\"")
+          end
+        else
+          UI.message("  Single result: \"#{translations.text}\"")
+        end
 
         # Process and save translations
         save_batch_translations(batch, translations, progress)
