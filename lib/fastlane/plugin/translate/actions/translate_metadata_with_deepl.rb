@@ -154,14 +154,15 @@ module Fastlane
         source_lang = Helper::DeeplLanguageMapperHelper.get_source_language(source_language)
         target_lang = Helper::DeeplLanguageMapperHelper.get_target_language(target_language)
 
-        translation_options = {
-          source_lang: source_lang,
-          target_lang: target_lang
-        }
+        translation_options = {}
         translation_options[:formality] = formality if formality
 
-        result = DeepL.translate(source_content, translation_options)
-        result.text
+        # DeepL.translate expects: texts, source_lang, target_lang, options
+        result = DeepL.translate([source_content], source_lang, target_lang, translation_options)
+        
+        # Handle both single and array responses
+        translated_text = result.is_a?(Array) ? result.first.text : result.text
+        translated_text
       rescue StandardError => e
         raise "DeepL translation failed: #{e.message}"
       end
