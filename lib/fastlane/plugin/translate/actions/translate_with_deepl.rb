@@ -490,7 +490,7 @@ module Fastlane
           FastlaneCore::ConfigItem.new(
             key: :free_api,
             description: 'Use DeepL Free API endpoint instead of Pro',
-            type: Boolean,
+            is_string: false,
             default_value: false
           ),
           FastlaneCore::ConfigItem.new(
