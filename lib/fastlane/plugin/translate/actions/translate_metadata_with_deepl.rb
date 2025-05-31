@@ -132,11 +132,31 @@ module Fastlane
           next if locale == 'default' # Skip special directories
           next if locale == 'review_information'
           
-          detected_languages << locale
+          # Map metadata directory names to DeepL-compatible language codes
+          deepl_language = map_metadata_directory_to_language(locale)
+          detected_languages << deepl_language
         end
 
         UI.message("📁 Found metadata directories for: #{detected_languages.join(', ')}")
         detected_languages
+      end
+
+      def self.map_metadata_directory_to_language(metadata_dir)
+        # Map App Store metadata directory names to DeepL-compatible language codes
+        case metadata_dir
+        when 'de-DE'
+          'de' # German metadata directory -> de for DeepL
+        when 'es-ES'
+          'es' # Spanish (Spain) metadata directory -> es for DeepL  
+        when 'fr-FR'
+          'fr' # French metadata directory -> fr for DeepL
+        when 'nl-NL'
+          'nl' # Dutch metadata directory -> nl for DeepL
+        when 'no'
+          'nb' # Norwegian metadata directory -> nb (Bokmål) for DeepL
+        else
+          metadata_dir # Direct mapping for most languages
+        end
       end
 
       def self.determine_formality(target_language, formality_param)
@@ -168,8 +188,7 @@ module Fastlane
       end
 
       def self.map_to_metadata_directory(language_code)
-        # Map iOS language codes to App Store metadata directory names
-        # Most are direct mappings, but handle special cases
+        # Map DeepL language codes back to App Store metadata directory names
         case language_code
         when 'nb'
           'no' # Norwegian Bokmål -> no
