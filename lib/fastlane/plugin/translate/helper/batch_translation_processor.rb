@@ -40,19 +40,20 @@ module Fastlane
         batch.each_with_index do |(string_key, _), text_index|
           translated_text = translations.is_a?(Array) ? translations[text_index].text : translations.text
 
-          # Only save non-empty translations
-          if translated_text && !translated_text.strip.empty?
-            translated_batch[string_key] = translated_text
-          else
+          # Save all translations, including empty ones - let the update logic handle them
+          translated_batch[string_key] = translated_text || ''
+
+          # Count empty translations for reporting
+          if !translated_text || translated_text.strip.empty?
             skipped_empty += 1
-            UI.important("⚠️ Skipping empty translation for: \"#{string_key}\"")
+            UI.important("⚠️ DeepL returned empty translation for: \"#{string_key}\"")
           end
         end
 
         progress.save_translated_strings(translated_batch)
 
         {
-          translated_count: translated_batch.size,
+          translated_count: translated_batch.size - skipped_empty, # Only count non-empty as "translated"
           skipped_count: skipped_empty
         }
       end

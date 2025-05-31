@@ -480,26 +480,41 @@ module Fastlane
 
         # Update the JSON structure
         actually_updated = 0
+        empty_translations = 0
         translated_strings.each do |string_key, translated_text|
-          localization = xcstrings_data.dig('strings', string_key, 'localizations', target_language, 'stringUnit')
-          next unless localization
+          # Ensure the string exists in the xcstrings structure
+          xcstrings_data['strings'][string_key] ||= {}
+          string_data = xcstrings_data['strings'][string_key]
+
+          # Ensure localizations structure exists
+          string_data['localizations'] ||= {}
+
+          # Ensure target language localization exists
+          string_data['localizations'][target_language] ||= {}
+
+          # Ensure stringUnit exists
+          string_data['localizations'][target_language]['stringUnit'] ||= {}
+
+          localization = string_data['localizations'][target_language]['stringUnit']
 
           # Double-check: only mark as translated if we have actual content
           if translated_text && !translated_text.strip.empty?
             localization['value'] = translated_text
             localization['state'] = 'translated'
             actually_updated += 1
+            UI.message("✅ Updated \"#{string_key}\" -> \"#{translated_text}\"")
           else
             # Keep as 'new' if translation is empty
             localization['value'] = translated_text || ''
             localization['state'] = 'new'
-            UI.important("⚠️ Keeping empty translation as 'new' state: \"#{string_key}\"")
+            empty_translations += 1
+            UI.important("⚠️ Empty translation for \"#{string_key}\" (received: \"#{translated_text || 'nil'}\")")
           end
         end
 
         # Write updated JSON back to file
         File.write(xcstrings_path, JSON.pretty_generate(xcstrings_data))
-        UI.success("💾 Updated xcstrings file (#{actually_updated} marked as translated)")
+        UI.success("💾 Updated xcstrings file (#{actually_updated} marked as translated, #{empty_translations} empty)")
       end
 
       def self.validate_json_file(xcstrings_path)
