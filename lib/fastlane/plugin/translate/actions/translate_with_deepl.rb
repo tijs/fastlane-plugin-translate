@@ -17,6 +17,13 @@ module Fastlane
         # Setup and validation
         setup_deepl_client(params)
         xcstrings_path = find_xcstrings_file(params[:xcstrings_path])
+
+        # Handle quit signal from file selection
+        if xcstrings_path == :quit
+          UI.important('👋 Translation cancelled by user')
+          return 0
+        end
+
         backup_file = create_backup(xcstrings_path)
 
         # Parse xcstrings file
@@ -35,11 +42,29 @@ module Fastlane
         # Language selection
         target_language = select_target_language(params[:target_language], supported_languages, xcstrings_data)
 
+        # Handle quit signal from language selection
+        if target_language == :quit
+          UI.important('👋 Translation cancelled by user')
+          return 0
+        end
+
         # Formality detection
         formality = detect_and_ask_formality(target_language, params[:formality])
 
+        # Handle quit signal from formality selection
+        if formality == :quit
+          UI.important('👋 Translation cancelled by user')
+          return 0
+        end
+
         # Translate the selected language
         translated_count = translate_language(xcstrings_data, xcstrings_path, source_language, target_language, formality, params)
+
+        # Handle quit signal from translation process
+        if translated_count == :quit
+          UI.important('👋 Translation cancelled by user')
+          return 0
+        end
 
         # Set shared values for other actions
         Actions.lane_context[SharedValues::TRANSLATE_WITH_DEEPL_TRANSLATED_COUNT] = translated_count
@@ -89,7 +114,12 @@ module Fastlane
 
         # Multiple files found, let user choose
         UI.message('📁 Multiple xcstrings files found:')
-        UI.select('Choose file:', xcstrings_files)
+        options = xcstrings_files + ['❌ Quit']
+        selected = UI.select('Choose file:', options)
+
+        return :quit if selected == '❌ Quit'
+
+        selected
       end
 
       def self.create_backup(xcstrings_path)
@@ -145,7 +175,11 @@ module Fastlane
         language_options.sort_by! { |opt| -opt[:stats][:untranslated] }
 
         UI.message('📋 Available languages for translation:')
-        selected_display = UI.select('Choose target language:', language_options.map { |opt| opt[:display] })
+        options_with_quit = language_options.map { |opt| opt[:display] } + ['❌ Quit']
+        selected_display = UI.select('Choose target language:', options_with_quit)
+
+        # Handle quit selection
+        return :quit if selected_display == '❌ Quit'
 
         # Find the corresponding language code
         selected_option = language_options.find { |opt| opt[:display] == selected_display }
@@ -195,10 +229,14 @@ module Fastlane
         return nil unless Helper::DeeplLanguageMapperHelper.supports_formality?(target_language)
 
         lang_name = Helper::LanguageRegistryHelper.language_name(target_language)
+        options = ['default', 'more (formal)', 'less (informal)', 'prefer_more (formal if possible)', 'prefer_less (informal if possible)', '❌ Quit']
         choice = UI.select(
           "🎭 #{lang_name} supports formality options. Choose style:",
-          ['default', 'more (formal)', 'less (informal)', 'prefer_more (formal if possible)', 'prefer_less (informal if possible)']
+          options
         )
+
+        # Handle quit selection
+        return :quit if choice == '❌ Quit'
 
         case choice
         when 'more (formal)' then 'more'
@@ -224,8 +262,16 @@ module Fastlane
         if progress.has_progress?
           summary = progress.progress_summary
           UI.message("📈 Found existing progress: #{summary[:translated_count]} strings translated")
-          choice = UI.select('Continue from where you left off?', ['Yes, continue', 'No, start fresh'])
-          progress.cleanup if choice == 'No, start fresh'
+          options = ['Yes, continue', 'No, start fresh', '❌ Quit']
+          choice = UI.select('Continue from where you left off?', options)
+
+          case choice
+          when '❌ Quit'
+            progress.cleanup
+            return :quit
+          when 'No, start fresh'
+            progress.cleanup
+          end
         end
 
         # Extract untranslated strings
@@ -364,6 +410,8 @@ module Fastlane
               retry
             elsif action == :skip
               next
+            elsif action == :quit
+              return :quit
             end
           rescue StandardError => e
             action = handle_translation_error(e, batch, index, batches.count)
@@ -372,6 +420,8 @@ module Fastlane
               retry
             elsif action == :skip
               next
+            elsif action == :quit
+              return :quit
             end
           end
         end
@@ -380,8 +430,9 @@ module Fastlane
       end
 
       def self.handle_rate_limit_error(_batch, index, total_batches)
+        options = ['Wait 60s and retry', 'Skip this batch', 'Abort translation', '❌ Quit']
         choice = UI.select("⚠️ Rate limit exceeded for batch #{index + 1}/#{total_batches}",
-                           ['Wait 60s and retry', 'Skip this batch', 'Abort translation'])
+                           options)
         case choice
         when 'Wait 60s and retry'
           UI.message('⏳ Waiting 60 seconds...')
@@ -392,12 +443,15 @@ module Fastlane
           :skip
         when 'Abort translation'
           UI.user_error!('❌ Translation aborted by user')
+        when '❌ Quit'
+          :quit
         end
       end
 
       def self.handle_translation_error(error, _batch, index, total_batches)
         UI.error("❌ Translation error for batch #{index + 1}/#{total_batches}: #{error.message}")
-        choice = UI.select('Choose action:', ['Skip this batch', 'Retry batch', 'Abort translation'])
+        options = ['Skip this batch', 'Retry batch', 'Abort translation', '❌ Quit']
+        choice = UI.select('Choose action:', options)
 
         case choice
         when 'Skip this batch'
@@ -408,6 +462,8 @@ module Fastlane
           :retry
         when 'Abort translation'
           UI.user_error!('❌ Translation aborted by user')
+        when '❌ Quit'
+          :quit
         end
       end
 
