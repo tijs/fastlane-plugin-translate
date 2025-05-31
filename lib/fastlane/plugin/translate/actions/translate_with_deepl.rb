@@ -18,12 +18,6 @@ module Fastlane
         setup_deepl_client(params)
         xcstrings_path = find_xcstrings_file(params[:xcstrings_path])
 
-        # Handle quit signal from file selection
-        if xcstrings_path == :quit
-          UI.important('👋 Translation cancelled by user')
-          return 0
-        end
-
         backup_file = create_backup(xcstrings_path)
 
         # Parse xcstrings file
@@ -42,29 +36,11 @@ module Fastlane
         # Language selection
         target_language = select_target_language(params[:target_language], supported_languages, xcstrings_data)
 
-        # Handle quit signal from language selection
-        if target_language == :quit
-          UI.important('👋 Translation cancelled by user')
-          return 0
-        end
-
         # Formality detection
         formality = detect_and_ask_formality(target_language, params[:formality])
 
-        # Handle quit signal from formality selection
-        if formality == :quit
-          UI.important('👋 Translation cancelled by user')
-          return 0
-        end
-
         # Translate the selected language
         translated_count = translate_language(xcstrings_data, xcstrings_path, source_language, target_language, formality, params)
-
-        # Handle quit signal from translation process
-        if translated_count == :quit
-          UI.important('👋 Translation cancelled by user')
-          return 0
-        end
 
         # Set shared values for other actions
         Actions.lane_context[SharedValues::TRANSLATE_WITH_DEEPL_TRANSLATED_COUNT] = translated_count
@@ -114,11 +90,7 @@ module Fastlane
 
         # Multiple files found, let user choose
         UI.message('📁 Multiple xcstrings files found:')
-        options = xcstrings_files + ['❌ Quit']
-        selected = UI.select('Choose file:', options)
-
-        return :quit if selected == '❌ Quit'
-
+        selected = UI.select('Choose file:', xcstrings_files)
         selected
       end
 
@@ -174,9 +146,8 @@ module Fastlane
         # Sort by most untranslated first (prioritize languages that need work)
         language_options.sort_by! { |opt| -opt[:stats][:untranslated] }
 
-        # Always prompt user for selection - no automatic selection
+        # Show all languages with their translation status
         UI.message('📋 Available languages for translation:')
-        options_with_quit = language_options.map { |opt| opt[:display] } + ['❌ Quit']
 
         # Force interactive mode and ensure we wait for user input
         $stdout.flush
@@ -184,10 +155,7 @@ module Fastlane
 
         # Use a loop to ensure we get valid input
         loop do
-          selected_display = UI.select('Choose target language:', options_with_quit)
-
-          # Handle quit selection
-          return :quit if selected_display == '❌ Quit'
+          selected_display = UI.select('Choose target language:', language_options.map { |opt| opt[:display] })
 
           # Find the corresponding language code
           selected_option = language_options.find { |opt| opt[:display] == selected_display }
@@ -197,8 +165,7 @@ module Fastlane
             UI.error('❌ Invalid selection. Please try again.')
           end
         rescue Interrupt
-          UI.important('👋 Translation cancelled by user')
-          return :quit
+          UI.user_error!('👋 Translation cancelled by user')
         end
       end
 
@@ -261,20 +228,31 @@ module Fastlane
         return nil unless Helper::DeeplLanguageMapperHelper.supports_formality?(target_language)
 
         lang_name = Helper::LanguageRegistryHelper.language_name(target_language)
-        options = ['default', 'more (formal)', 'less (informal)', 'prefer_more (formal if possible)', 'prefer_less (informal if possible)', '❌ Quit']
-        choice = UI.select(
-          "🎭 #{lang_name} supports formality options. Choose style:",
-          options
-        )
+        options = ['default', 'more (formal)', 'less (informal)', 'prefer_more (formal if possible)', 'prefer_less (informal if possible)']
 
-        # Handle quit selection
-        return :quit if choice == '❌ Quit'
+        # Force interactive mode and ensure we wait for user input
+        $stdout.flush
+        $stderr.flush
 
-        case choice
-        when 'more (formal)' then 'more'
-        when 'less (informal)' then 'less'
-        when 'prefer_more (formal if possible)' then 'prefer_more'
-        when 'prefer_less (informal if possible)' then 'prefer_less'
+        # Use a loop to ensure we get valid input
+        loop do
+          choice = UI.select(
+            "🎭 #{lang_name} supports formality options. Choose style:",
+            options
+          )
+
+          # Process the choice and return the result
+          case choice
+          when 'default' then return nil
+          when 'more (formal)' then return 'more'
+          when 'less (informal)' then return 'less'
+          when 'prefer_more (formal if possible)' then return 'prefer_more'
+          when 'prefer_less (informal if possible)' then return 'prefer_less'
+          else
+            UI.error('❌ Invalid selection. Please try again.')
+          end
+        rescue Interrupt
+          UI.user_error!('👋 Translation cancelled by user')
         end
       end
 
@@ -294,13 +272,15 @@ module Fastlane
         if progress.has_progress?
           summary = progress.progress_summary
           UI.message("📈 Found existing progress: #{summary[:translated_count]} strings translated")
-          options = ['Yes, continue', 'No, start fresh', '❌ Quit']
+          options = ['Yes, continue', 'No, start fresh']
+
+          # Force interactive mode and ensure we wait for user input
+          $stdout.flush
+          $stderr.flush
+
           choice = UI.select('Continue from where you left off?', options)
 
           case choice
-          when '❌ Quit'
-            progress.cleanup
-            return :quit
           when 'No, start fresh'
             progress.cleanup
           end
@@ -443,8 +423,6 @@ module Fastlane
               retry
             when :skip
               next
-            when :quit
-              return :quit
             end
           rescue StandardError => e
             action = Helper::TranslationErrorHandler.handle_translation_error(e, batch, index, batches.count)
@@ -456,8 +434,6 @@ module Fastlane
               retry
             when :skip
               next
-            when :quit
-              return :quit
             end
           end
         end
