@@ -358,45 +358,19 @@ module Fastlane
         batches.each_with_index do |batch, index|
           UI.message("🔄 Translating batch #{index + 1}/#{batches.count} (#{batch.count} strings)...")
 
-          # Prepare batch for DeepL API
-          texts_to_translate = batch.map { |_, data| data['source_text'] }
-
           retry_count = 0
           max_retries = 3
 
           begin
-            # Build translation options (exclude source_lang and target_lang)
-            translation_options = {}
-            translation_options[:formality] = formality if formality
+            # Process the batch using the helper
+            result = Helper::BatchTranslationProcessor.process_batch(
+              batch, source_lang, target_lang, formality, progress
+            )
 
-            # Get context from first item if available (DeepL applies to all)
-            first_context = batch.first&.last&.dig('context')
-            translation_options[:context] = first_context if first_context
+            total_translated += result[:translated_count]
 
-            # Call DeepL with positional arguments for source_lang and target_lang
-            translations = DeepL.translate(texts_to_translate, source_lang, target_lang, translation_options)
-
-            # Save translations to progress (only save non-empty translations)
-            translated_batch = {}
-            skipped_empty = 0
-
-            batch.each_with_index do |(string_key, _), text_index|
-              translated_text = translations.is_a?(Array) ? translations[text_index].text : translations.text
-
-              # Only save non-empty translations
-              if translated_text && !translated_text.strip.empty?
-                translated_batch[string_key] = translated_text
-              else
-                skipped_empty += 1
-                UI.important("⚠️ Skipping empty translation for: \"#{string_key}\"")
-              end
-            end
-
-            progress.save_translated_strings(translated_batch)
-            total_translated += translated_batch.size
-
-            success_msg = "✅ Batch #{index + 1} completed (#{translated_batch.size} strings translated"
-            success_msg += ", #{skipped_empty} empty translations skipped" if skipped_empty.positive?
+            success_msg = "✅ Batch #{index + 1} completed (#{result[:translated_count]} strings translated"
+            success_msg += ", #{result[:skipped_count]} empty translations skipped" if result[:skipped_count].positive?
             success_msg += ')'
             UI.success(success_msg)
           rescue DeepL::Exceptions::AuthorizationFailed
@@ -404,67 +378,35 @@ module Fastlane
           rescue DeepL::Exceptions::QuotaExceeded
             UI.user_error!('❌ DeepL quota exceeded. Upgrade your plan or wait for reset.')
           rescue DeepL::Exceptions::LimitExceeded
-            action = handle_rate_limit_error(batch, index, batches.count)
-            if action == :retry && retry_count < max_retries
+            action = Helper::TranslationErrorHandler.handle_rate_limit_error(batch, index, batches.count)
+            result = Helper::TranslationErrorHandler.handle_batch_result(action, retry_count, max_retries)
+
+            case result
+            when :retry
               retry_count += 1
               retry
-            elsif action == :skip
+            when :skip
               next
-            elsif action == :quit
+            when :quit
               return :quit
             end
           rescue StandardError => e
-            action = handle_translation_error(e, batch, index, batches.count)
-            if action == :retry && retry_count < max_retries
+            action = Helper::TranslationErrorHandler.handle_translation_error(e, batch, index, batches.count)
+            result = Helper::TranslationErrorHandler.handle_batch_result(action, retry_count, max_retries)
+
+            case result
+            when :retry
               retry_count += 1
               retry
-            elsif action == :skip
+            when :skip
               next
-            elsif action == :quit
+            when :quit
               return :quit
             end
           end
         end
 
         total_translated
-      end
-
-      def self.handle_rate_limit_error(_batch, index, total_batches)
-        options = ['Wait 60s and retry', 'Skip this batch', 'Abort translation', '❌ Quit']
-        choice = UI.select("⚠️ Rate limit exceeded for batch #{index + 1}/#{total_batches}",
-                           options)
-        case choice
-        when 'Wait 60s and retry'
-          UI.message('⏳ Waiting 60 seconds...')
-          sleep(60)
-          :retry
-        when 'Skip this batch'
-          UI.important("⏭️ Skipping batch #{index + 1}")
-          :skip
-        when 'Abort translation'
-          UI.user_error!('❌ Translation aborted by user')
-        when '❌ Quit'
-          :quit
-        end
-      end
-
-      def self.handle_translation_error(error, _batch, index, total_batches)
-        UI.error("❌ Translation error for batch #{index + 1}/#{total_batches}: #{error.message}")
-        options = ['Skip this batch', 'Retry batch', 'Abort translation', '❌ Quit']
-        choice = UI.select('Choose action:', options)
-
-        case choice
-        when 'Skip this batch'
-          UI.important("⏭️ Skipping batch #{index + 1}")
-          :skip
-        when 'Retry batch'
-          UI.message("🔄 Retrying batch #{index + 1}")
-          :retry
-        when 'Abort translation'
-          UI.user_error!('❌ Translation aborted by user')
-        when '❌ Quit'
-          :quit
-        end
       end
 
       def self.update_xcstrings_file(xcstrings_path, xcstrings_data, target_language, translated_strings)
