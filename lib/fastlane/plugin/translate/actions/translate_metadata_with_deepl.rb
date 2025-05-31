@@ -16,76 +16,73 @@ module Fastlane
       def self.run(params)
         # Setup and validation
         setup_deepl_client(params)
-        
+
         metadata_path = params[:metadata_path]
         source_locale = params[:source_locale]
         file_name = params[:file_name]
-        
+
         # Validate source file exists
         source_file_path = File.join(metadata_path, source_locale, file_name)
         UI.user_error!("❌ Source file not found: #{source_file_path}") unless File.exist?(source_file_path)
-        
+
         # Read source content
         source_content = File.read(source_file_path).strip
         UI.user_error!("❌ Source file is empty: #{source_file_path}") if source_content.empty?
-        
+
         # Create backup
         backup_file = create_backup(source_file_path)
-        
+
         # Detect available target languages
         target_languages = detect_target_languages(metadata_path, source_locale, params[:target_languages])
-        
+
         # Filter by DeepL support
         supported_languages = Helper::DeeplLanguageMapperHelper.supported_languages_from_list(target_languages)
         unsupported_languages = Helper::DeeplLanguageMapperHelper.unsupported_languages(target_languages)
-        
-        if unsupported_languages.any?
-          UI.important("⚠️  Languages not supported by DeepL: #{unsupported_languages.map { |l| "#{Helper::LanguageRegistryHelper.language_name(l)} (#{l})" }.join(', ')}")
-        end
-        
+
+        UI.important("⚠️  Languages not supported by DeepL: #{unsupported_languages.map { |l| "#{Helper::LanguageRegistryHelper.language_name(l)} (#{l})" }.join(', ')}") if unsupported_languages.any?
+
         UI.user_error!('❌ No DeepL-supported languages found') if supported_languages.empty?
-        
+
         UI.message("📋 Translating #{file_name} from #{source_locale} to #{supported_languages.size} languages:")
         supported_languages.each { |lang| UI.message("  • #{Helper::LanguageRegistryHelper.language_name(lang)} (#{lang})") }
-        
+
         # Translate to each target language
         total_translated = 0
         successful_languages = []
-        
+
         supported_languages.each do |target_language|
           UI.message("🔄 Translating to #{Helper::LanguageRegistryHelper.language_name(target_language)} (#{target_language})...")
-          
+
           begin
             # Determine formality for this language
             formality = determine_formality(target_language, params[:formality])
-            
+
             # Translate content
             translated_content = translate_content(source_content, source_locale, target_language, formality)
-            
+
             # Write to target file
             target_file_path = File.join(metadata_path, map_to_metadata_directory(target_language), file_name)
             ensure_directory_exists(File.dirname(target_file_path))
             File.write(target_file_path, translated_content)
-            
+
             UI.success("✅ #{target_language}: Translation completed")
             total_translated += 1
             successful_languages << target_language
-            
           rescue StandardError => e
             UI.error("❌ #{target_language}: Translation failed - #{e.message}")
           end
         end
-        
+
         # Set shared values
         Actions.lane_context[SharedValues::TRANSLATE_METADATA_WITH_DEEPL_TRANSLATED_COUNT] = total_translated
         Actions.lane_context[SharedValues::TRANSLATE_METADATA_WITH_DEEPL_TARGET_LANGUAGES] = successful_languages
         Actions.lane_context[SharedValues::TRANSLATE_METADATA_WITH_DEEPL_BACKUP_FILE] = backup_file
-        
+
         UI.success('🎉 Metadata translation completed!')
         UI.message("📊 Successfully translated #{file_name} for #{total_translated} languages")
         UI.message("📄 Backup saved: #{backup_file}")
         UI.message('🗑️  You can delete the backup after verifying results')
-        
+
         total_translated
       end
 
@@ -121,17 +118,17 @@ module Fastlane
         end
 
         # Auto-detect from existing metadata directories
-        UI.message("🔍 Auto-detecting target languages from metadata directories...")
-        
+        UI.message('🔍 Auto-detecting target languages from metadata directories...')
+
         detected_languages = []
         Dir.glob(File.join(metadata_path, '*')).each do |dir|
           next unless File.directory?(dir)
-          
+
           locale = File.basename(dir)
           next if locale == source_locale # Skip source locale
           next if locale == 'default' # Skip special directories
           next if locale == 'review_information'
-          
+
           # Map metadata directory names to DeepL-compatible language codes
           deepl_language = map_metadata_directory_to_language(locale)
           detected_languages << deepl_language
@@ -147,7 +144,7 @@ module Fastlane
         when 'de-DE'
           'de' # German metadata directory -> de for DeepL
         when 'es-ES'
-          'es' # Spanish (Spain) metadata directory -> es for DeepL  
+          'es' # Spanish (Spain) metadata directory -> es for DeepL
         when 'fr-FR'
           'fr' # French metadata directory -> fr for DeepL
         when 'nl-NL'
@@ -179,10 +176,9 @@ module Fastlane
 
         # DeepL.translate expects: texts, source_lang, target_lang, options
         result = DeepL.translate([source_content], source_lang, target_lang, translation_options)
-        
+
         # Handle both single and array responses
-        translated_text = result.is_a?(Array) ? result.first.text : result.text
-        translated_text
+        result.is_a?(Array) ? result.first.text : result.text
       rescue StandardError => e
         raise "DeepL translation failed: #{e.message}"
       end
@@ -195,7 +191,7 @@ module Fastlane
         when 'de'
           'de-DE' # German -> de-DE
         when 'es'
-          'es-ES' # Spanish -> es-ES  
+          'es-ES' # Spanish -> es-ES
         when 'fr'
           'fr-FR' # French -> fr-FR
         when 'nl'
@@ -215,9 +211,9 @@ module Fastlane
 
       def self.details
         'This action translates App Store metadata files (like release_notes.txt, description.txt) ' \
-        'from a source language to all supported target languages using DeepL API. ' \
-        'It automatically detects target languages from existing metadata directories ' \
-        'and only translates to languages supported by both App Store and DeepL.'
+          'from a source language to all supported target languages using DeepL API. ' \
+          'It automatically detects target languages from existing metadata directories ' \
+          'and only translates to languages supported by both App Store and DeepL.'
       end
 
       def self.available_options
@@ -227,7 +223,7 @@ module Fastlane
             env_name: 'DEEPL_AUTH_KEY',
             description: 'DeepL API authentication key',
             sensitive: true,
-            default_value: ENV['DEEPL_AUTH_KEY']
+            default_value: ENV.fetch('DEEPL_AUTH_KEY', nil)
           ),
           FastlaneCore::ConfigItem.new(
             key: :metadata_path,
@@ -288,7 +284,7 @@ module Fastlane
       end
 
       def self.is_supported?(platform)
-        [:ios, :android].include?(platform)
+        %i[ios android].include?(platform)
       end
 
       def self.example_code
@@ -316,4 +312,4 @@ module Fastlane
       end
     end
   end
-end 
+end
