@@ -22,7 +22,7 @@ Gem::Specification.new do |spec|
   spec.required_ruby_version = '>= 3.3'
 
   # The name of the C extension
-  spec.add_dependency('deepl-rb', '>= 2.5.0')
+  spec.add_dependency('deepl-rb', '~> 2.5', '>= 2.5.0')
 
   spec.add_development_dependency('bundler')
   spec.add_development_dependency('fastlane', '>= 2.0.0')

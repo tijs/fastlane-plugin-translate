@@ -56,19 +56,50 @@ module Fastlane
       end
 
       def self.setup_deepl_client(params)
-        DeepL.configure do |config|
-          config.auth_key = params[:api_token]
-          config.host = params[:free_api] ? 'https://api-free.deepl.com' : 'https://api.deepl.com'
+        # If free_api is explicitly set, use that configuration
+        if params[:free_api] != nil
+          DeepL.configure do |config|
+            config.auth_key = params[:api_token]
+            config.host = params[:free_api] ? 'https://api-free.deepl.com' : 'https://api.deepl.com'
+          end
+
+          begin
+            DeepL.usage
+            api_type = params[:free_api] ? 'Free' : 'Pro'
+            UI.success("✅ DeepL API key validated (#{api_type} API)")
+            return
+          rescue DeepL::Exceptions::AuthorizationFailed
+            UI.user_error!('❌ Invalid DeepL API key. Get one at: https://www.deepl.com/pro#developer')
+          rescue StandardError => e
+            UI.user_error!("❌ DeepL API connection failed: #{e.message}")
+          end
         end
 
-        # Test API key
-        begin
-          DeepL.usage
-          UI.success('✅ DeepL API key validated')
-        rescue DeepL::Exceptions::AuthorizationFailed
-          UI.user_error!('❌ Invalid DeepL API key. Get one at: https://www.deepl.com/pro#developer')
-        rescue StandardError => e
-          UI.user_error!("❌ DeepL API connection failed: #{e.message}")
+        # Auto-detect: try Pro API first, then Free API
+        endpoints = [
+          { host: 'https://api.deepl.com', name: 'Pro' },
+          { host: 'https://api-free.deepl.com', name: 'Free' }
+        ]
+
+        endpoints.each_with_index do |endpoint, index|
+          DeepL.configure do |config|
+            config.auth_key = params[:api_token]
+            config.host = endpoint[:host]
+          end
+
+          begin
+            DeepL.usage
+            UI.success("✅ DeepL API key validated (#{endpoint[:name]} API)")
+            UI.message("💡 Tip: You can skip auto-detection by setting free_api: #{endpoint[:name] == 'Free'}") if index > 0
+            return
+          rescue DeepL::Exceptions::AuthorizationFailed
+            # Try next endpoint if this one fails
+            next if index < endpoints.length - 1
+            # Both endpoints failed
+            UI.user_error!('❌ Invalid DeepL API key. Get one at: https://www.deepl.com/pro#developer')
+          rescue StandardError => e
+            UI.user_error!("❌ DeepL API connection failed: #{e.message}")
+          end
         end
       end
 
@@ -570,9 +601,10 @@ module Fastlane
           ),
           FastlaneCore::ConfigItem.new(
             key: :free_api,
-            description: 'Use DeepL Free API endpoint instead of Pro',
+            description: 'Use DeepL Free API endpoint instead of Pro (auto-detects if not specified)',
             is_string: false,
-            default_value: false
+            optional: true,
+            default_value: nil
           ),
           FastlaneCore::ConfigItem.new(
             key: :formality,
